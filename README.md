@@ -19,9 +19,9 @@ This file can be used to edit account passwords after creating them in bulk. You
 
 The CSV must have the following two columns, in Titlecase.  
 
-                      | Username    | Password            |
-                      | ----------- | ------------------- |
-                      | User1       | User1Password       |
-                      | User2       | User2Password       |
+| Username    | Password            |
+| ----------- | ------------------- |
+| User1       | User1Password       |
+| User2       | User2Password       |
 
 _Note: The CSV may have other columns. However, the "Username" and "Password" columns MUST exist, and be titled the same._
