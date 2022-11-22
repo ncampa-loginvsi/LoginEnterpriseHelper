@@ -114,6 +114,6 @@ Foreach ($row in $accountlist) {
     # Grab the row's accountId
     $accountId = $account.id
     # Reconfigure the account using password from dataset
-    Set-LeAccount -accountId $accountId -password $password -username $username -domain "ad.lab"
+    Set-LeAccount -accountId $accountId -password $password -username $username -domain "YOUR_DOMAIN"
     Write-Host "Successfully changed account configuration for $username"
 }
