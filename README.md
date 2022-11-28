@@ -10,7 +10,7 @@ This script can be used to edit account passwords after creating them in bulk. Y
 * Import the CSV file
 * For each Username in the CSV:
    * Query account information for the Username account
-   * Configure the Username account to use Username's password as defined in CSV
+   * Modify the accounts as specified in the provided .csv 
 
 #### Parameters:
 * ```fqdn```: The fully qualified domain name of your Login Enterprise virtual appliance
