@@ -4,7 +4,7 @@ This repository contains useful commands and scripts for use with Login Enterpri
 
 ## AccountManagement.ps1 
 
-This file can be used to edit account passwords after creating them in bulk. You might have accounts LoginEnt0001, ..., LoginEnt1000. Because bulk creation does not currently allow for unique passwords, it may seem tidious to manually edit each account, certainly as the number of accounts increases. 
+This script can be used to edit account passwords after creating them in bulk. You might have accounts LoginEnt0001, ..., LoginEnt1000. Because bulk creation does not currently allow for unique passwords, it may seem tidious to manually edit each account, certainly as the number of accounts increases. 
 
 ### Algorithm:
 * Import the CSV file
