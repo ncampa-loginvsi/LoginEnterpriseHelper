@@ -2,15 +2,10 @@
 # fqdn: fully qualified name of the Login Enterprise appliance (example.com not https://example.com/publicApi)
 # token: the token generated from the appliance (requires Configuration level access)
 # pathToCsv: the path to the csv file containing user information in the format Username, Password
-# domain: the domain of the user accounts to modify
-# count: the number of accounts to return from Get-Accounts endpoint (1-10,000)
-
-
 Param(
     [Parameter(Mandatory=$true)]$fqdn,
     [Parameter(Mandatory=$true)]$token,
     [Parameter(Mandatory=$true)]$pathToCsv,
-    [Parameter(Mandatory=$true)]$domain,
     [Parameter(Mandatory=$true)]$count
 )
 
@@ -109,10 +104,11 @@ Write-Host "Collected $count accounts to modify. Starting process now."
 
 # For every row in the dataset
 Foreach ($row in $accountlist) {
-    # Grab their username and password 
+    # Grab their username and password
     $username = $row.Username 
     $password = $row.Password
     $domain = $row.Domain
+    Write-Host $username, $password, $domain
     Write-Host "Configuring changes for: $username..."
     # Find the row's username value, and search for that account
     $account = Get-LeAccounts | Where-Object {($_.username -eq $username) -and ($_.domain -eq $domain)}
