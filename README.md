@@ -19,7 +19,7 @@ This script can be used to edit account passwords after creating them in bulk. Y
 * ```domain```: The desired domain of the user accounts that will be modified 
 * ```count```: The number of accounts to query, between 1 and 10,000
 
-The CSV must have the following two columns, in Titlecase. 
+The CSV must have the following two columns, in Titlecase. If User1 does not exist, or is not a part of contoso.org domain, it will return error 405. 
 
 | Username    | Password            | Domain           | 
 | ----------- | ------------------- |------------------|
