@@ -108,7 +108,6 @@ Foreach ($row in $accountlist) {
     $username = $row.Username 
     $password = $row.Password
     $domain = $row.Domain
-    Write-Host $username, $password, $domain
     Write-Host "Configuring changes for: $username..."
     # Find the row's username value, and search for that account
     $account = Get-LeAccounts | Where-Object {($_.username -eq $username) -and ($_.domain -eq $domain)}
