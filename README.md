@@ -9,8 +9,8 @@ This script can be used to edit account passwords after creating them in bulk. Y
 ### Algorithm:
 * Import the CSV file
 * For each Username in the CSV:
-   * Query account information for the Username account
-   * Modify the Username's account as specified in the provided .csv 
+   * Query an account that matches the row username and domain
+   * Modify the account to an updated password
 
 #### Parameters:
 * ```fqdn```: The fully qualified domain name of your Login Enterprise virtual appliance
@@ -19,7 +19,7 @@ This script can be used to edit account passwords after creating them in bulk. Y
 * ```domain```: The desired domain of the user accounts that will be modified 
 * ```count```: The number of accounts to query, between 1 and 10,000
 
-The CSV must have the following two columns, in Titlecase.  
+The CSV must have the following two columns, in Titlecase. 
 
 | Username    | Password            | Domain           | 
 | ----------- | ------------------- |------------------|
