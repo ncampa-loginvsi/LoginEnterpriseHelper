@@ -1,21 +1,6 @@
 # Login Enterprise
 
-This repository contains useful commands and scripts for use with Login Enterprise public API. 
-
-## Autologon.ps1
-
-This script enables automatic logons after rebooting a machine. The script download and installs chocolatey package manager, in order to download and install Windows AutoLogon. You will need to provide the parameters listed below.
-
-### Algorithm:
-* Download/ install chocolatey
-* Downoad/ install Windows Autologon
-* Modify registry to configure automatic logins for desired user and number of logins
-
-### Parameters:
-*```DefaultUsername```: The username to enable automatic logins for
-*```DefaultPassword```: The username to enable automatic logins for
-*```DefaultDomain```: The domain that the user to enable automatic logins belongs to 
-*```AutoLogonCount```: The number of times to allow autologons (decrements each login)
+This repository contains useful commands and scripts for use with Login Enterprise public API.
 
 ## AccountManagement.ps1 (Supported API versions: v5)
 
@@ -43,3 +28,19 @@ The CSV must have the following two columns, in Titlecase. If User1 does not exi
 | UserN       | UserNPassword       | contoso.org      |
 
 _Note: The CSV may have other columns. However, the "Username", "Password", and "Domain" columns MUST exist, and be titled as shown above._
+## Autologon.ps1
+
+This script enables automatic logons after rebooting a machine. The script download and installs chocolatey package manager, in order to download and install Windows AutoLogon. You will need to provide the parameters listed below.
+
+### Algorithm:
+* Download/ install chocolatey
+* Downoad/ install Windows Autologon
+* Modify registry to configure automatic logins for desired user and number of logins
+
+### Parameters:
+*```DefaultUsername```: The username to enable automatic logins for
+*```DefaultPassword```: The username to enable automatic logins for
+*```DefaultDomain```: The domain that the user to enable automatic logins belongs to 
+*```AutoLogonCount```: The number of times to allow autologons (decrements each login)
+
+
