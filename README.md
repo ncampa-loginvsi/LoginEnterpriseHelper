@@ -38,10 +38,10 @@ This script enables automatic logons after rebooting a machine. The script downl
 * Modify registry to configure automatic logins for desired user and number of logins
 
 #### Parameters:
-*```DefaultUsername```: The username to enable automatic logins for
-*```DefaultPassword```: The username to enable automatic logins for
-*```DefaultDomain```: The domain that the user to enable automatic logins belongs to 
-*```AutoLogonCount```: The number of times to allow autologons (decrements each login)
+* ```DefaultUsername```: The username to enable automatic logins for
+* ```DefaultPassword```: The username to enable automatic logins for
+* ```DefaultDomain```: The domain that the user to enable automatic logins belongs to 
+* ```AutoLogonCount```: The number of times to allow autologons (decrements each login)
 
 ## UpdateHosts.ps1
 
