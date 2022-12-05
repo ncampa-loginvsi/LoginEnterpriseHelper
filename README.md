@@ -2,6 +2,10 @@
 
 This repository contains useful commands and scripts for use with Login Enterprise public API. 
 
+## Autologon.ps1
+
+This script enables automatic logons after rebooting a machine. The script download and installs chocolatey package manager, in order to download and install Windows AutoLogon. 
+
 ## AccountManagement.ps1 (Supported API versions: v5)
 
 This script can be used to edit account passwords after creating them in bulk. You might have accounts LoginEnt0001, ..., LoginEnt1000. Because bulk creation does not currently allow for unique passwords, it may seem tidious to manually edit each account, certainly as the number of accounts increases. 
