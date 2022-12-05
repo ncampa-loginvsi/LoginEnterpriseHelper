@@ -93,7 +93,6 @@ for ($i = 0; $i -lt $hostsToAdd.Length; $i++) {
 
 # Convert custom object back to Json for request body
 $requestBody = $requestBody | ConvertTo-Json -Depth 7
-$requestBody
 
 # Update test to modify with updated request body
 Update-LeTest -testId $testId -body $requestBody
