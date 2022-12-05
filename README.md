@@ -48,7 +48,7 @@ This script enables automatic logons after rebooting a machine. The script downl
 Given a test ID and a list of IP addresses of RDS hosts, this script will append them to your Multi-Host Configuration. 
 
 ### Algorithm:
-* Get the test environment configuration from the test desired to modify
+* Get the test environment configuration in JSON format from the test desired to modify
 * For each host in hostsToAdd argument:
   * Append them to the original json in hostList
 * Update test using modified JSON request from first step
