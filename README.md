@@ -43,7 +43,7 @@ This script enables automatic logons after rebooting a machine. The script downl
 * ```DefaultDomain```: The domain that the user to enable automatic logins belongs to 
 * ```AutoLogonCount```: The number of times to allow autologons (decrements each login)
 
-## UpdateHosts.ps1
+## UpdateHosts.ps1 (Supported API versions: v5)
 
 Given a test ID and a list of IP addresses of RDS hosts, this script will append them to your Multi-Host Configuration. 
 
