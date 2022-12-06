@@ -46,6 +46,7 @@ This script enables automatic logons after rebooting a machine. The script downl
 ## UpdateContinuousTestHosts.ps1 and UpdateLoadTestHosts.ps1 (Supported API versions: v5)
 
 Given a test ID and a list of RDS hosts, this script will add them to your Multi-Host Configuration. 
+_Note: Ensure you use the correct script respective to your test type. Each script will only work against a test ID of the correct test type._
 
 ### Algorithm:
 * Get the test environment configuration in JSON format from the test desired to modify
