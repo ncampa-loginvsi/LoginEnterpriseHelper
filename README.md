@@ -50,7 +50,7 @@ Given a test ID and a list of RDS hosts, this script will add them to your Multi
 _Note: Ensure you use the correct script respective to your test type. Each script will only work against a test ID of the correct test type._
 
 ### Algorithm:
-* Get the test environment configuration in JSON format from the test desired to modify
+* Get the test configuration in JSON format from the testID provided
 * Create a new request body directly from the response body
 * For each host in hostsToAdd:
   * Add them to the new request body
