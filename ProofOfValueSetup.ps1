@@ -485,6 +485,7 @@ function Main {
     }
     # $SampleAppIds THESE ARE THE APP IDS OF SAMPLE APPLICATIONS OUT OF THE BOX
     # 4.10 WE CAN UPDATE THIS LIST TO USE KNOWLEDGE WORKER
+    # THIS IS WHERE YOU LEFT OFF
     # Create Application test
     # Create continuous test
     # Create load test
