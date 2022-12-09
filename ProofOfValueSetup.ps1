@@ -1,11 +1,14 @@
 Param(
     [string]$Fqdn,
     [string]$Token,
-    [string]$FilePath
+    [string]$FilePath,
+    [string]$ConnectorType,
+    [string]$Target # For now this will be either RDP host or Storefront URL
 )
 
-$global:fqdn = $fqdn
-$global:token = $token
+$global:Fqdn = $Fqdn
+$global:Token = $Token
+$global:Target = $Target
 
 $SSLHandler = @"
 public class SSLHandler
@@ -142,13 +145,13 @@ function Import-AccountGroups {
     $Id = $AppGroupId."id"
     $ids += $Id
     
-    # $ContGroupId = New-AccountGroup -GroupName "Continuous Testing" -Description "These users will be dedicated to hunting for failure."
-    # $Id = $ContGroupId."id"
-    # $ids += $Id
+    $ContGroupId = New-AccountGroup -GroupName "Load Testing" -Description "These users will be dedicated to hunting for failure."
+    $Id = $ContGroupId."id"
+    $ids += $Id
 
-    # $LoadGroupId = New-AccountGroup -GroupName "Load Testing" -Description "These users will be dedicated to baseline testing."
-    # $Id = $LoadGroupId."id"
-    # $ids += $Id
+    $LoadGroupId = New-AccountGroup -GroupName "Continuous Testing" -Description "These users will be dedicated to baseline testing."
+    $Id = $LoadGroupId."id"
+    $ids += $Id
 
     $ids
 }
@@ -292,8 +295,20 @@ function New-LeLauncherGroup {
         ContentType = "application/json"
     }
     
-    Invoke-RestMethod @Parameters
-    $Response.items 
+    $Response = Invoke-RestMethod @Parameters
+    $Response."id"
+}
+
+function Import-LeLauncherGroup {
+    param(
+        $LauncherGroupName,
+        $Description
+    )
+    Write-Host "[GROUPS] Attempting to create $LauncherGroupName..." -ForegroundColor "Yellow"
+    $Id = New-LeLauncherGroup -GroupName "$LauncherGroupName" -Description "$Description."
+    Write-Host "[GROUPS] $LauncherGroupName created successfully..." -ForegroundColor "Green"
+    Write-Host "[DEBUG] $LauncherGroupName id: $Id"
+    $Id
 }
 
 # Query for existing accounts
@@ -326,7 +341,7 @@ function Remove-LeLauncherGroup {
     }
     
     $Response = Invoke-RestMethod @Parameters
-    $Response.items 
+    $Response 
 }
 
 # Query for existing accounts
@@ -379,11 +394,16 @@ function Zip-Arrays {
     [System.Linq.Enumerable]::Zip($First, $Second, [Func[Object, Object, Object[]]]$ResultSelector)
 }
 
-function New-LeTest {
+function New-LeApplicationTest {
     Param (
-        [string]$Type,
         [string]$TestName,
-        [string]$Description
+        [string]$Description,
+        [string]$AccountGroupId,
+        [string]$LauncherGroupId,
+        [string]$ConnectorType,
+        [string]$TargetRDPHost, # This is either RDP Host or Storefront URL
+        [string]$ServerUrl,
+        [string]$TargetResource
     )
 
     # this is only required for older version of PowerShell/.NET
@@ -397,24 +417,48 @@ function New-LeTest {
         "Authorization" = "Bearer $token"
     }
 
-    $Body = @"
+    if ($ConnectorType -eq "RDP"){
+        $Body = @"
 {
     "type": "ApplicationTest",
-    "name": "string",
-    "description": "string",
+    "name": "$TestName",
+    "description": "$Description",
     "connector": {
-        "type": "string",
-        "host": "string",
-        "commandLine": "string"
+        "type": "Rdp",
+        "hostList": [{
+            "endpoint": "$TargetRDPHost",
+            "enabled": true
+        }]
     },
     "accountGroups": [
-        "497f6eca-6276-4993-bfeb-53cbbbba6f08"
+        "$AccountGroupId"
     ],
     "launcherGroups": [
-        "497f6eca-6276-4993-bfeb-53cbbbba6f08"
+        "$LauncherGroupId"
     ]
-        }
+}
 "@
+    } elseif ($ConnectorType -eq "StoreFront") {
+        $Body = @"
+{
+    "type": "ApplicationTest",
+    "name": "$TestName",
+    "description": "$Description",
+    "connector": {
+        "type": "Storefront",
+        "serverUrl": "$ServerUrl",
+        "resource": "$TargetResource"
+    },
+    "accountGroups": [
+        "$AccountGroupId"
+    ],
+    "launcherGroups": [
+        "$LauncherGroupId"
+    ]
+}
+"@
+    }
+    
 
     $Parameters = @{
         Uri         = "https://" + $global:fqdn + "/publicApi/v5/tests"
@@ -424,51 +468,280 @@ function New-LeTest {
         ContentType = "application/json"
     }
     
-    $Parameters
-    #Invoke-RestMethod @Parameters
-    #$Response = Invoke-RestMethod @Parameters
-    #$Response
+    
+    #Write-Host $Parameters.body
+    $Response = Invoke-RestMethod @Parameters
+    $Response
 }
 
-function Debug-Cleanup {
-    Foreach ($Id in $AccountIDs) {
-        Remove-LeAccount $Id
-    }
-    Write-Host "[CLEANUP] Accounts removed..." -ForegroundColor "Red"
-    Foreach ($Id in $AccountGroupIds) {
-        Remove-LeAccountGroup $Id
-    }
-    Write-Host "[CLEANUP] Account groups removed..." -ForegroundColor "Red"
-
-    Write-Host "[CLEANUP] Attempting to removed Launcher group..." -ForegroundColor "Red"
-    Remove-LeLauncherGroup -LauncherGroupId $LauncherGroupId."id"
-    Write-Host "[CLEANUP] Launcher group removed..." -ForegroundColor "Red"
-}
-
-
-function Main {
-    param (
-        $FilePath,
-        $Debug = "Y"
+function New-LeLoadTest {
+    Param (
+        [string]$TestName,
+        [string]$Description,
+        [string]$AccountGroupId,
+        [string]$LauncherGroupId,
+        [string]$ConnectorType,
+        [string]$TargetRDPHost, # This is either RDP Host or Storefront URL
+        [string]$ServerUrl,
+        [string]$TargetResource
     )
-  
-    # Import .csv file of accounts into the appliance
-    Write-Host "[ACCOUNTS] Start: Beginning account import process..." -ForegroundColor "White"
-    $AccountIds = Import-LeAccounts -FilePath $FilePath
-    Write-Host "[ACCOUNTS] End: Account import process completed..." -ForegroundColor "White"
 
-    # Create empty account groups to add users to
-    Write-Host "[GROUPS] Start: Beginning account groups creation process..." -ForegroundColor "White"
-    $AccountGroupIds = Import-AccountGroups
-    Write-Host "[GROUPS] End: Account groups have been created..." -ForegroundColor "White"
+    # this is only required for older version of PowerShell/.NET
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11
 
-    # Create empty launcher group to add launchers to
-    # In 4.10 this will no longer be needed, should be a default group for new installations
-    Write-Host "[GROUPS] Start: Beginning account groups creation process..." -ForegroundColor "White"
-    $LauncherGroupId = New-LeLauncherGroup -GroupName "All Launchers" -Description "This is a group containing all launchers."
-    Write-Host "[GROUPS] End: Account groups have been created..." -ForegroundColor "White"
+    # WARNING: ignoring SSL/TLS certificate errors is a security risk
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [SSLHandler]::GetSSLHandler()
 
-    # Create application test
+    $Header = @{
+        "Accept"        = "application/json"
+        "Authorization" = "Bearer $token"
+    }
+
+    if ($ConnectorType -eq "RDP"){
+        $Body = @"
+{
+    "type": "LoadTest",
+    "name": "$TestName",
+    "description": "$Description",
+    "connector": {
+        "type": "Rdp",
+        "hostList": [{
+            "endpoint": "$TargetRDPHost",
+            "enabled": true
+        }]
+    },
+    "accountGroups": [
+        "$AccountGroupId"
+    ],
+    "launcherGroups": [
+        "$LauncherGroupId"
+    ]
+}
+"@
+    } elseif ($ConnectorType -eq "StoreFront") {
+        $Body = @"
+{
+    "type": "LoadTest",
+    "name": "$TestName",
+    "description": "$Description",
+    "connector": {
+        "type": "Storefront",
+        "serverUrl": "$ServerUrl",
+        "resource": "$TargetResource"
+    },
+    "accountGroups": [
+        "$AccountGroupId"
+    ],
+    "launcherGroups": [
+        "$LauncherGroupId"
+    ]
+}
+"@
+    }
+    
+
+    $Parameters = @{
+        Uri         = "https://" + $global:fqdn + "/publicApi/v5/tests"
+        Headers     = $Header
+        Method      = "POST"
+        body        = $Body
+        ContentType = "application/json"
+    }
+    
+    #Write-Host $Parameters.body
+    $Response = Invoke-RestMethod @Parameters
+    $Response
+}
+
+function New-LeContinuousTest {
+    Param (
+        [string]$TestName,
+        [string]$Description,
+        [string]$AccountGroupId,
+        [string]$LauncherGroupId,
+        [string]$ConnectorType,
+        [string]$TargetRDPHost, # This is either RDP Host or Storefront URL
+        [string]$ServerUrl,
+        [string]$TargetResource
+    )
+
+    # this is only required for older version of PowerShell/.NET
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11
+
+    # WARNING: ignoring SSL/TLS certificate errors is a security risk
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [SSLHandler]::GetSSLHandler()
+
+    $Header = @{
+        "Accept"        = "application/json"
+        "Authorization" = "Bearer $token"
+    }
+
+# Endpoint is set to false because the account group is empty
+    if ($ConnectorType -eq "RDP"){
+        $Body = @"
+{
+"type": "ContinuousTest",
+"name": "$TestName",
+"description": "$Description",
+"isEnabled": "false",
+"connector": {
+    "type": "Rdp",
+    "hostList": [{
+        "endpoint": "$TargetRDPHost",
+        "enabled": true
+    }]
+},
+"accountGroups": [
+    "$AccountGroupId"
+],
+"launcherGroups": [
+    "$LauncherGroupId"
+]
+}
+"@
+    } elseif ($ConnectorType -eq "StoreFront") {
+        $Body = @"
+{
+    "type": "ContinuousTest",
+    "name": "$TestName",
+    "description": "$Description",
+    "connector": {
+        "type": "Storefront",
+        "serverUrl": "$ServerUrl",
+        "resource": "$TargetResource"
+    },
+    "accountGroups": [
+        "$AccountGroupId"
+    ],
+    "launcherGroups": [
+        "$LauncherGroupId"
+    ]
+}
+"@
+    }
+
+    $Parameters = @{
+        Uri         = "https://" + $global:fqdn + "/publicApi/v5/tests"
+        Headers     = $Header
+        Method      = "POST"
+        body        = $Body
+        ContentType = "application/json"
+    }
+    
+    #Write-Host $Parameters.body
+    $Response = Invoke-RestMethod @Parameters
+    $Response
+}
+
+
+
+function Import-Tests {
+    param (
+        [string]$AccountGroupIds,
+        [string]$LauncherGroupId,
+        [string]$TargetRDPHost, # This is either RDP Host or Store Resource
+        [string]$ServerUrl,
+        [string]$TargetResource # This is Storefront URL
+    )
+
+    #Write-Host $AccountGroupIds
+    
+    $AppTestGroupId = $AccountGroupIds.Substring(0, 36)
+    $LoadTestGroupId = $AccountGroupIds.Substring(37, 36)
+    $ContinuousTestGroupId = $AccountGroupIds.Substring(74, 36)
+    
+    $ids = @()
+    Write-Host "[TESTS] Start: Beginning test creation process..." -ForegroundColor "White"
+ 
+    $TestName = "RDP Application Test"
+    Write-Host "[TESTS] Attempting to create $TestName..." -ForegroundColor "Yellow"
+    $RDPAppTestId = New-LeApplicationTest -TestName $TestName -Description "This test will validate the performance and functionality of the workflow." -AccountGroupId $AppTestGroupId -LauncherGroupId $LauncherGroupId -ConnectorType "RDP" -TargetRDPHost $TargetRDPHost
+    Write-Host "[TESTS] $TestName test created successfully..." -ForegroundColor "Green"
+    $Id = $RDPAppTestId."id"
+    $ids += $Id
+    Write-Host "[DEBUG] $TestName id: $Id..." -ForegroundColor "Blue"
+
+    $TestName = "StoreFront Application Test"
+    Write-Host "[TESTS] Attempting to create $TestName..." -ForegroundColor "Yellow"
+    $StoreFrontAppTestId = New-LeApplicationTest -TestName $TestName -Description "This test will validate the performance and functionality of the workflow." -AccountGroupId $AppTestGroupId -LauncherGroupId $LauncherGroupId -ConnectorType "Storefront" -ServerUrl $ServerUrl -TargetResource $TargetResource
+    Write-Host "[TESTS] $TestName test created successfully..." -ForegroundColor "Green"
+    $Id = $StoreFrontAppTestId."id"
+    $ids += $Id
+    Write-Host "[DEBUG] $TestName id: $Id..." -ForegroundColor "Blue"
+ 
+    $TestName = "RDP Load Test"
+    Write-Host "[TESTS] Attempting to create $TestName..." -ForegroundColor "Yellow"
+    $RDPLoadTestId = New-LeLoadTest -TestName $TestName -Description "Baseline your virtual desktop host's performance and capacity." -AccountGroupId $LoadTestGroupId -LauncherGroupId $LauncherGroupId -ConnectorType "RDP" -TargetRDPHost $TargetRDPHost
+    Write-Host "[TESTS] $TestName test created successfully..." -ForegroundColor "Green"
+    $Id = $RDPLoadTestId."id"
+    $ids += $Id
+    Write-Host "[DEBUG] $TestName id: $Id..." -ForegroundColor "Blue"
+
+    $TestName = "StoreFront Load Test"
+    Write-Host "[TESTS] Attempting to create $TestName..." -ForegroundColor "Yellow"
+    $StoreFrontLoadTestId = New-LeApplicationTest -TestName $TestName -Description "This test will validate the performance and functionality of the workflow." -AccountGroupId $AppTestGroupId -LauncherGroupId $LauncherGroupId -ConnectorType "Storefront" -ServerUrl $ServerUrl -TargetResource $TargetResource
+    Write-Host "[TESTS] $TestName test created successfully..." -ForegroundColor "Green"
+    $Id = $StoreFrontLoadTestId."id"
+    $ids += $Id
+    Write-Host "[DEBUG] $TestName id: $Id..." -ForegroundColor "Blue"
+    
+    $TestName = "RDP Continuous Test"
+    Write-Host "[TESTS] Start: Attempting to create $TestName..." -ForegroundColor "Yellow"
+    $RDPContinuousTestId = New-LeContinuousTest -TestName $TestName -Description "Have a canary in the coalmine hunting for failure." -AccountGroupId $ContinuousTestGroupId -LauncherGroupId $LauncherGroupId -ConnectorType "RDP" -TargetRDPHost $TargetRDPHost
+    Write-Host "[TESTS] $TestName test created successfully..." -ForegroundColor "Green"
+    $Id = $RDPContinuousTestId."id"
+    $ids += $Id
+    Write-Host "[DEBUG] $TestName id: $Id..." -ForegroundColor "Blue"
+
+    $TestName = "StoreFront Continuous Test"
+    Write-Host "[TESTS] Start: Attempting to create $TestName..." -ForegroundColor "Yellow"
+    $StoreFrontContinuousTestId = New-LeContinuousTest -TestName $TestName -Description "Have a canary in the coalmine hunting for failure." -AccountGroupId $ContinuousTestGroupId -LauncherGroupId $LauncherGroupId -ConnectorType "Storefront" -ServerUrl $ServerUrl -TargetResource $TargetResource
+    Write-Host "[TESTS] $TestName test created successfully..." -ForegroundColor "Green"
+    $Id = $StoreFrontContinuousTestId."id"
+    $ids += $Id
+    Write-Host "[DEBUG] $TestName id: $Id..." -ForegroundColor "Blue"
+
+    Write-Host "[TESTS] End: Tests have been created..." -ForegroundColor "White"
+ 
+    $ids
+}
+
+# Query for existing accounts
+function Remove-LeTest {
+    Param (
+        [string]$TestId
+    )
+
+    # this is only required for older version of PowerShell/.NET
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11
+
+    # WARNING: ignoring SSL/TLS certificate errors is a security risk
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [SSLHandler]::GetSSLHandler()
+
+    $Header = @{
+        "Accept"        = "application/json"
+        "Authorization" = "Bearer $global:token"
+    }
+
+    $Body = @{
+        accountId = $TestId
+    } 
+
+    $Parameters = @{
+        Uri         = "https://" + $global:fqdn + "/publicApi/v5/tests" + "/$TestId"
+        Headers     = $Header
+        Method      = "DELETE"
+        body        = $Body
+        ContentType = "application/json"
+    }
+    
+    
+    #$Parameters.body.accountId
+    $Response = Invoke-RestMethod @Parameters
+    $Response
+}
+
+function Get-LeApplicationsForTest {
     $Apps = Get-LeApplications
     [System.Collections.ArrayList]$AppsData = Zip-Arrays -First $Apps.name -Second $Apps.id
     $SampleAppNames = @(
@@ -483,26 +756,102 @@ function Main {
         $Id = $AppId[1]
         $SampleAppIds += $Id
     }
-    # $SampleAppIds THESE ARE THE APP IDS OF SAMPLE APPLICATIONS OUT OF THE BOX
-    # 4.10 WE CAN UPDATE THIS LIST TO USE KNOWLEDGE WORKER
-    # THIS IS WHERE YOU LEFT OFF
-    # Create Application test
+    $SampleAppIds
+}
+
+function Debug-Cleanup {
+    param(
+        $AccountIds,
+        $AccountGroupIds,
+        $LauncherGroupId,
+        $TestIds
+    )
+
+    
+    Foreach ($Id in $AccountIds) {
+        Start-Sleep 0.25
+        Remove-LeAccount $Id
+    }
+    Write-Host "[CLEANUP] Accounts removed..." -ForegroundColor "Red"
+
+    Write-Host "[CLEANUP] Attempting to remove account groups..." -ForegroundColor "Red"
+    Foreach ($Id in $AccountGroupIds) {
+        Start-Sleep 0.25
+        Remove-LeAccountGroup $Id
+    }
+    Write-Host "[CLEANUP] Account groups removed..." -ForegroundColor "Red"
+
+    Write-Host "[CLEANUP] Attempting to remove Launcher group..." -ForegroundColor "Red"
+    Remove-LeLauncherGroup -LauncherGroupId $LauncherGroupId | Out-Null
+    Write-Host "[CLEANUP] Launcher group removed..." -ForegroundColor "Red"
+
+    Write-Host "[CLEANUP] Attempting to remove tests..." -ForegroundColor "Red"
+    $TestTypes = @("RDP Application Test", "StoreFront Application Test", "RDP Load Test", , "StoreFront Load Test", "RDP Continuous Test", "StoreFront Continuous Test")
+    $Index = 0
+    Foreach ($Test in $TestTypes) {
+        $Id = $TestIds[$Index]
+        $Type = $TestTypes[$Index]
+        Write-Host "[DEBUG] Attempting to remove $Type id: $Id" -ForegroundColor "Blue"
+        Remove-LeTest -TestId $Id | Out-Null
+        $Index++
+    }
+    Write-Host "[CLEANUP] Tests have been removed..." -ForegroundColor "Green"
+    
+}
+
+function Main {
+    param (
+        $FilePath,
+        $ConnectorType,
+        $TargetRDPHost = "10.111.23.1",
+        $ServerUrl = "https://storefront.contoso.org",
+        $TargetResource = "TargetResource",
+        $Debug = "Y"
+    )
+  
+    # Import .csv file of accounts into the appliance
+    #Write-Host "[ACCOUNTS] Start: Beginning account import process..." -ForegroundColor "White"
+    #$AccountIds = Import-LeAccounts -FilePath $FilePath
+    #Write-Host "[ACCOUNTS] End: Account import process completed..." -ForegroundColor "White"
+
+    # Create empty account groups to add users to
+    Write-Host "[GROUPS] Start: Beginning account groups creation process..." -ForegroundColor "White"
+    $AccountGroupIds = Import-AccountGroups
+    Write-Host "[GROUPS] End: Account groups have been created..." -ForegroundColor "White"
+
+    # Create empty launcher group to add launchers to
+    # In 4.10 this will no longer be needed, should be a default group for new installations
+    Write-Host "[GROUPS] Start: Beginning launcher group creation process..." -ForegroundColor "White"
+    $LauncherGroupId = Import-LeLauncherGroup -LauncherGroupName "All Launchers" -Description "This is a group containing all launchers."
+    Write-Host "[GROUPS] End: Launcher groups have been created..." -ForegroundColor "White"
+
+    # AppId, LoadId, ContId
+    Write-Host "[CLEANUP] Attempting to create tests..." -ForegroundColor "White"
+    $TestIds = Import-Tests -AccountGroupId $AccountGroupIds -LauncherGroupId $LauncherGroupId -TargetRDPHost $TargetRDPHost -ServerUrl $ServerUrl -TargetResource $TargetResource
+    Write-Host "[TESTS] End: Tests have been created..." -ForegroundColor "White"
+    
     # Create continuous test
     # Create load test
 
     if ($Debug -eq "Y") {
-        Write-Host "[GROUPS] Start: Beginning cleanup process..." -ForegroundColor "White"
-        Debug-Cleanup
-        Write-Host "[GROUPS] End: Account groups have been created..." -ForegroundColor "White"
+        Write-Host "[CLEANUP] Start: Beginning cleanup process..." -ForegroundColor "White"
+        Debug-Cleanup -AccountIds $AccountIds -AccountGroupIds $AccountGroupIds -LauncherGroupId $LauncherGroupId -TestIds $TestIds
+        Write-Host "[CLEANUP] End: Cleanup process has been completed..." -ForegroundColor "White"
     } 
     
     Write-Host "[DEBUG] Script has completed. Enjoy your proof of concept..." -ForegroundColor "Green"
     
 }
 
+# Pass non-sensitive arguments here, and call it from the command line: ".\ProofOfValue.ps1 -Fqdn <YOUR_FQDN> -Token <YOUR_SECRET_TOKEN>"
+Main -FilePath ".\Accounts.csv" -Debug "Y"
 
-Main -FilePath ".\Accounts.csv"
 
+#[string]$Fqdn,
+#[string]$Token,
+#[string]$FilePath,
+#[string]$ConnectorType,
+#[string]$Target # For now this will be either RDP host or Storefront URL
 
 # CreateTest("Application Test", type="appTest")
 # CreateTest("Capacity Baseline", type="loadTest")
