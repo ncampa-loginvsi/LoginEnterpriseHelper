@@ -107,14 +107,13 @@ Foreach ($row in $accountlist) {
     $username = $row.Username 
     $password = $row.Password
     $domain = $row.Domain
-    Write-Host $username, $password, $domain
     Write-Host "Configuring changes for: $username..."
-    # Find the row's username value, and search for that account
+    # Find the row"s username value, and search for that account
     $account = Get-LeAccounts | Where-Object {($_.username -eq $username) -and ($_.domain -eq $domain)}
     Write-Host "Got account details for $username..."
     # Grab the row"s accountId
     $accountId = $account.id
-    # Reconfigure the account using username, password, domain from dataset
+    # Reconfigure the account using password from dataset
     Write-Host "Making changes for $username with accountId: $accountId"
     Set-LeAccount -accountId $accountId -username $username -password $password -domain $domain
     Write-Host "Successfully changed account configuration for $username"
